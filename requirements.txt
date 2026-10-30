@@ -1,0 +1,3 @@
+# The calculator and the web UI use only the Python standard library.
+# pytest is needed to run the test suite.
+pytest>=8.0

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Distribution Waterfall &amp; Fee Calculator</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>Distribution Waterfall &amp; Fee Calculator</h1>
+  <p>Private equity fund: waterfall, carried interest, management fees and share class comparison</p>
+</header>
+
+<div class="layout">
+  <!-- ============================== INPUTS ============================== -->
+  <aside class="inputs" aria-label="Inputs">
+    <section>
+      <h2>Presets</h2>
+      <div class="preset-row" id="presets"></div>
+    </section>
+
+    <section>
+      <h2>Fund</h2>
+      <label>Committed capital (LP + GP equity)
+        <input type="number" id="committed_capital" step="any" inputmode="decimal"></label>
+      <div class="two">
+        <label>LP share (%) <input type="number" id="lp_share_pct" step="any"></label>
+        <label>GP equity (%) <input type="number" id="gp_share_pct" disabled></label>
+      </div>
+      <div class="two">
+        <label>Hurdle rate (% p.a.) <input type="number" id="hurdle_pct" step="any"></label>
+        <label>GP catch-up (%) <input type="number" id="catchup_pct" step="any"></label>
+      </div>
+      <div class="two">
+        <label>Holding period (years) <input type="number" id="hold_years" step="any"></label>
+        <label>Investment period (years) <input type="number" id="investment_period_years" step="any"></label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Share class</h2>
+      <div class="two">
+        <label>Fee in investment period (% p.a.) <input type="number" id="fee_investment_pct" step="any"></label>
+        <label>Fee afterwards (% p.a.) <input type="number" id="fee_after_pct" step="any"></label>
+      </div>
+      <label>Carried interest (%) <input type="number" id="carry_pct" step="any"></label>
+    </section>
+
+    <section>
+      <h2>Realised proceeds</h2>
+      <div class="segmented" role="radiogroup" aria-label="Proceeds input type">
+        <label><input type="radio" name="mode" value="amount"><span>Amount</span></label>
+        <label><input type="radio" name="mode" value="tvpi" checked><span>TVPI</span></label>
+        <label><input type="radio" name="mode" value="irr"><span>IRR</span></label>
+      </div>
+      <label><span id="proceeds_label">Gross TVPI (x)</span>
+        <input type="number" id="proceeds_value" step="any"></label>
+      <p class="hint" id="proceeds_hint"></p>
+    </section>
+  </aside>
+
+  <!-- ============================== RESULTS ============================= -->
+  <main class="results">
+    <div id="error" class="banner error" role="alert" hidden></div>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="waterfall" aria-selected="true">Waterfall</button>
+      <button role="tab" data-tab="fees" aria-selected="false">Fees &amp; returns</button>
+      <button role="tab" data-tab="compare" aria-selected="false">Class comparison</button>
+      <button role="tab" data-tab="irr" aria-selected="false">Cash-flow IRR</button>
+    </nav>
+
+    <!-- Waterfall -->
+    <section class="panel" id="tab-waterfall">
+      <div class="kpis" id="wf-kpis"></div>
+      <div id="wf-check"></div>
+      <div class="card">
+        <div class="card-head"><h3>Distribution by stage</h3><button class="link" data-csv="waterfall">Download CSV</button></div>
+        <div class="table-wrap"><table id="wf-table"></table></div>
+      </div>
+      <div class="card">
+        <h3>Where the proceeds go</h3>
+        <div id="wf-chart"></div>
+      </div>
+    </section>
+
+    <!-- Fees -->
+    <section class="panel" id="tab-fees" hidden>
+      <div class="kpis" id="fee-kpis"></div>
+      <div class="card">
+        <h3>Gross vs. net</h3>
+        <div class="table-wrap"><table id="net-table"></table></div>
+        <p class="hint">Gross = fund level, before fees and carry. Net = what the LP keeps after carried interest and management fees. The difference is the cost to the investor.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Management fee per year</h3><button class="link" data-csv="fees">Download CSV</button></div>
+        <div id="fee-chart"></div>
+        <div class="table-wrap"><table id="fee-table"></table></div>
+      </div>
+    </section>
+
+    <!-- Comparison -->
+    <section class="panel" id="tab-compare" hidden>
+      <div id="cmp-error" class="banner error" hidden></div>
+      <div class="card">
+        <h3>Share classes</h3>
+        <div class="class-grid">
+          <fieldset><legend>Class A</legend>
+            <label>Fee in investment period (% p.a.) <input type="number" id="a_fee_investment_pct" step="any"></label>
+            <label>Fee afterwards (% p.a.) <input type="number" id="a_fee_after_pct" step="any"></label>
+            <label>Carried interest (%) <input type="number" id="a_carry_pct" step="any"></label>
+          </fieldset>
+          <fieldset><legend>Class B</legend>
+            <label>Fee in investment period (% p.a.) <input type="number" id="b_fee_investment_pct" step="any"></label>
+            <label>Fee afterwards (% p.a.) <input type="number" id="b_fee_after_pct" step="any"></label>
+            <label>Carried interest (%) <input type="number" id="b_carry_pct" step="any"></label>
+          </fieldset>
+        </div>
+        <p class="hint">Fund parameters and proceeds are taken from the inputs on the left.</p>
+      </div>
+      <div id="cmp-verdict"></div>
+      <div class="card">
+        <div class="card-head"><h3>Cost comparison at the selected proceeds</h3><button class="link" data-csv="compare">Download CSV</button></div>
+        <div class="table-wrap"><table id="cmp-table"></table></div>
+      </div>
+      <div class="card">
+        <h3>Break-even: which class is cheaper at which gross TVPI?</h3>
+        <div class="three">
+          <label>TVPI from <input type="number" id="tvpi_from" step="any"></label>
+          <label>to <input type="number" id="tvpi_to" step="any"></label>
+          <label>Step <input type="number" id="tvpi_step" step="any"></label>
+        </div>
+        <p id="be-text" class="be-text"></p>
+        <div id="cmp-chart"></div>
+      </div>
+    </section>
+
+    <!-- Cash-flow IRR -->
+    <section class="panel" id="tab-irr" hidden>
+      <div class="card">
+        <h3>IRR from a cash-flow series (optional)</h3>
+        <p class="hint">One value per year, starting today (year 0). Negative = paid in, positive = received. Separate by commas, spaces or new lines.</p>
+        <textarea id="cashflows" rows="4">-100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 250</textarea>
+        <button id="irr-btn" class="primary">Calculate IRR</button>
+        <p id="irr-result" class="irr-result" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
